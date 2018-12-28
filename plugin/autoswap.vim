@@ -110,24 +110,17 @@ function! AS_RunningTmux ()
 endfunction
 
 " MAC: Return an identifier for the terminal application used to run Vim.
-" If the terminal application cannot be detected, return empty string so
-" we avoid launching Apple Terminal unnecessarily, and also provide some
-" basic support for MacVim users (delete old swap files, open read-only)
+" Return an empty string when the terminal application cannot be detected
+" or is not fully supported, in which case we can still delete old swap
+" files and open read-only, even if we can't switch to the active window
 function! AS_TerminalAppName_Mac()
-	let codename = $TERM_PROGRAM
-	let terminal_app_name = "Terminal"
-
-	if (codename == 'Apple_Terminal')
-		let terminal_app_name = "Terminal"
-	elseif (codename == 'iTerm.app')
-		let terminal_app_name = 'iTerm2'
-	elseif (codename == 'Hyper')
-		let terminal_app_name = 'Hyper'
-	elseif (codename == '')
-		let terminal_app_name = ''
+	if ($TERM_PROGRAM == 'Apple_Terminal')
+		return 'Terminal'
+	elseif ($TERM_PROGRAM == 'iTerm.app')
+		return 'iTerm2'
+	else
+		return ''
 	endif
-
-	return terminal_app_name
 endfunction
 
 " Return an identifier for a terminal window already editing the named file
@@ -180,14 +173,8 @@ endfunction
 function! AS_DetectActiveWindow_Mac (filename)
 	let shortname = fnamemodify(a:filename,":t")
 	let terminal_app_name = AS_TerminalAppName_Mac()
-	if (terminal_app_name == '')
-		return ''
-	elseif (terminal_app_name == 'Hyper')
-		" HyperTerm doesn't support AppleScript, do nothing for now
-		return ''
-	endif
-	let active_window = system('osascript -e ''tell application "'.terminal_app_name.'" to every window whose (name begins with "'.shortname.' " and name ends with "VIM")''')
-	let active_window = substitute(active_window, '^window id \d\+\zs\_.*', '', '')
+	let find_win_cmd = 'osascript -e ''tell application "'.terminal_app_name.'" to every window whose (name begins with "'.shortname.' " and name ends with "VIM")'''
+	let active_window = substitute(system(find_win_cmd), '^window id \d\+\zs\_.*', '', '')
 	return (active_window =~ 'window' ? active_window : "")
 endfunction
 
