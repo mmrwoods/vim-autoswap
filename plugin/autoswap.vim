@@ -108,8 +108,9 @@ function! AS_RunningTmux ()
 endfunction
 
 " MAC: Return an identifier for the terminal application used to run Vim.
-" If the terminal application cannot be detected, suppose that
-" we are running inside the default MacOS's application "Terminal"
+" If the terminal application cannot be detected, return empty string so
+" we avoid launching Apple Terminal unnecessarily, and also provide some
+" basic support for MacVim users (delete old swap files, open read-only)
 function! AS_TerminalAppName_Mac()
 	let codename = $TERM_PROGRAM
 	let terminal_app_name = "Terminal"
@@ -120,6 +121,8 @@ function! AS_TerminalAppName_Mac()
 		let terminal_app_name = 'iTerm2'
 	elseif (codename == 'Hyper')
 		let terminal_app_name = 'Hyper'
+	elseif (codename == '')
+		let terminal_app_name = ''
 	endif
 
 	return terminal_app_name
@@ -175,6 +178,9 @@ endfunction
 function! AS_DetectActiveWindow_Mac (filename)
 	let shortname = fnamemodify(a:filename,":t")
 	let terminal_app_name = AS_TerminalAppName_Mac()
+	if (terminal_app_name == '')
+		return ''
+	endif
 	let active_window = system('osascript -e ''tell application "'.terminal_app_name.'" to every window whose (name begins with "'.shortname.' " and name ends with "VIM")''')
 	let active_window = substitute(active_window, '^window id \d\+\zs\_.*', '', '')
 	return (active_window =~ 'window' ? active_window : "")
