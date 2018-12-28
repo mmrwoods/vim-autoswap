@@ -109,20 +109,6 @@ function! AS_RunningTmux ()
 	return 0
 endfunction
 
-" MAC: Return an identifier for the terminal application used to run Vim.
-" Return an empty string when the terminal application cannot be detected
-" or is not fully supported, in which case we can still delete old swap
-" files and open read-only, even if we can't switch to the active window
-function! AS_TerminalAppName_Mac()
-	if ($TERM_PROGRAM == 'Apple_Terminal')
-		return 'Terminal'
-	elseif ($TERM_PROGRAM == 'iTerm.app')
-		return 'iTerm2'
-	else
-		return ''
-	endif
-endfunction
-
 " Return an identifier for a terminal window already editing the named file
 " (Should either return a string identifying the active window,
 "  or else return an empty string to indicate "no active window")...
@@ -172,15 +158,16 @@ endfunction
 " MAC: Detection function for Mac OSX, uses osascript
 function! AS_DetectActiveWindow_Mac (filename)
 	let shortname = fnamemodify(a:filename,":t")
-	let terminal_app_name = AS_TerminalAppName_Mac()
-	let find_win_cmd = 'osascript -e ''tell application "'.terminal_app_name.'" to every window whose (name contains "'.shortname.' " and name contains "VIM")'''
-	let matching_windows = split(system(find_win_cmd), ", ")
-	if (len(matching_windows) > 1)
-		let active_window = substitute(matching_windows[-1], '^window id \d\+\zs\_.*', '', '')
+	if ($TERM_PROGRAM == 'Apple_Terminal')
+		let find_win_cmd = 'osascript -e ''tell application "Terminal" to get the id of every window whose (name does not contain "'.&titleold.'" and name contains "'.shortname.' " and name contains "VIM")'''
+	elseif ($TERM_PROGRAM == 'iTerm.app')
+		let find_win_cmd = 'osascript -e ''tell application "iTerm2" to get the index of every window whose (name contains "'.shortname.' " and name contains "VIM")'''
 	else
-		let active_window = ''
+		return ''
 	endif
-	return active_window
+	let active_window = system(find_win_cmd)
+	let active_window = substitute(active_window, '^\d\+\zs\_.*', '', '')
+	return (active_window =~ '\d\+' ? active_window : "")
 endfunction
 
 
@@ -209,10 +196,20 @@ endfunction
 
 " MAC: Switch function for Mac, uses osascript
 function! AS_SwitchToActiveWindow_Mac (active_window)
-	let terminal_app_name = AS_TerminalAppName_Mac()
-	call system('osascript -e ''tell application "'.terminal_app_name.'" to set frontmost of '.a:active_window.' to true''')
+	if ($TERM_PROGRAM == 'Apple_Terminal')
+		call system('osascript -e ''tell application "Terminal" to set frontmost of window id '.a:active_window.' to true''')
+	elseif ($TERM_PROGRAM == 'iTerm.app')
+		let switch_win_cmd = 'osascript -e ''tell application "iTerm"''
+					\ -e ''repeat with mywindow in windows''
+					\ -e ''   if index of mywindow is ' .a:active_window. '''
+					\ -e ''     select mywindow''
+					\ -e ''   return''
+					\ -e ''   end if''
+					\ -e '' end repeat''
+					\ -e ''end tell'''
+		call system(switch_win_cmd)
+	endif
 endfunction
-
 
 " Restore previous external compatibility options
 let &cpo = s:save_cpo
