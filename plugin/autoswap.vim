@@ -173,9 +173,14 @@ endfunction
 function! AS_DetectActiveWindow_Mac (filename)
 	let shortname = fnamemodify(a:filename,":t")
 	let terminal_app_name = AS_TerminalAppName_Mac()
-	let find_win_cmd = 'osascript -e ''tell application "'.terminal_app_name.'" to every window whose (name begins with "'.shortname.' " and name ends with "VIM")'''
-	let active_window = substitute(system(find_win_cmd), '^window id \d\+\zs\_.*', '', '')
-	return (active_window =~ 'window' ? active_window : "")
+	let find_win_cmd = 'osascript -e ''tell application "'.terminal_app_name.'" to every window whose (name contains "'.shortname.' " and name contains "VIM")'''
+	let matching_windows = split(system(find_win_cmd), ", ")
+	if (len(matching_windows) > 1)
+		let active_window = substitute(matching_windows[-1], '^window id \d\+\zs\_.*', '', '')
+	else
+		let active_window = ''
+	endif
+	return active_window
 endfunction
 
 
