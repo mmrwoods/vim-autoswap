@@ -180,6 +180,9 @@ function! AS_DetectActiveWindow_Mac (filename)
 	let terminal_app_name = AS_TerminalAppName_Mac()
 	if (terminal_app_name == '')
 		return ''
+	elseif (terminal_app_name == 'Hyper')
+		" HyperTerm doesn't support AppleScript, do nothing for now
+		return ''
 	endif
 	let active_window = system('osascript -e ''tell application "'.terminal_app_name.'" to every window whose (name begins with "'.shortname.' " and name ends with "VIM")''')
 	let active_window = substitute(active_window, '^window id \d\+\zs\_.*', '', '')
